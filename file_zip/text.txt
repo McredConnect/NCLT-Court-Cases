@@ -1,0 +1,25 @@
+uvicorn app:app --reload 
+
+http://127.0.0.1:8000/docs#/default/scrape_cases_scrape_post
+
+Instructions:
+Add court selection with an All Courts option
+Let users select years from 2021 to 2025 only
+Show PDFs on screen and also let users download them
+
+Endpoints are:
+
+POST /scrape — send company name, courts, years (2021-2025), and case status; get PDFs to view and download.
+{
+  "company_name": "reliance industries",
+  "benches": [
+    "Delhi", "Mumbai"
+  ],
+  "years": [
+    2024, 2022, 2025
+  ],
+  "statuses": [
+    "Pending",
+    "Disposed"
+  ]
+}

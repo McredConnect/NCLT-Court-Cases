@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+unstructured
+selenium
+requests
+langchain
+chromedriver-autoinstaller
+langchain-community
