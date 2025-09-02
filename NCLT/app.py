@@ -3,6 +3,7 @@ import random
 import logging
 import chromedriver_autoinstaller
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -10,6 +11,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from langchain.document_loaders import SeleniumURLLoader
 import requests
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import os
 import base64
 import tempfile
@@ -17,7 +20,7 @@ import shutil
 from urllib.parse import quote_plus
 from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed  # For parallelization
-
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -128,6 +131,18 @@ class AdaptiveController:
 
 
 app = FastAPI(title="NCLT Court Cases Scraper 7")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:4200",    # Angular dev server
+        "http://192.168.1.77:4444"  # Production server
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 base_search_url = "https://nclt.gov.in/party-name-wise-search"
 
@@ -375,3 +390,46 @@ async def scrape_cases(req: ScrapeRequest):
     except Exception as e:
         logging.error(f"Unexpected error during scraping: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+app.mount("/files", StaticFiles(directory="output"), name="files")
+
+@app.get("/download")
+async def download_file(file_path: str):
+    """ Simple file download endpoint """
+    try:
+        from urllib.parse import unquote
+        
+        # Decode the URL-encoded path
+        decoded_path = unquote(file_path)
+        print(f"Requested file: {decoded_path}")
+        
+        # Convert to absolute path
+        absolute_path = Path(decoded_path).absolute()
+        print(f"Absolute path: {absolute_path}")
+        
+        # Check if file exists
+        if not absolute_path.exists():
+            print(f"File not found: {absolute_path}")
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get filename for download
+        filename = absolute_path.name
+        
+        # Determine content type based on file extension
+        if filename.lower().endswith('.pdf'):
+            media_type = "application/pdf"
+        elif filename.lower().endswith(('.txt', '.text')):
+            media_type = "text/plain"
+        else:
+            media_type = "application/octet-stream"
+        
+        print(f"Serving file: {filename} with type: {media_type}")
+        return FileResponse(
+            str(absolute_path),
+            media_type=media_type,
+            filename=filename
+        )
+        
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
