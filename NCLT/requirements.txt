@@ -1,9 +1,6 @@
 fastapi
-uvicorn
+uvicorn[standard]
+playwright
+aiohttp
 pydantic
-unstructured
-selenium
-requests
-langchain
-chromedriver-autoinstaller
-langchain-community
+aiofiles

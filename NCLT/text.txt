@@ -1,11 +1,14 @@
-uvicorn app:app --reload 
+after installing dependencies run this playwright install run this on Terminal
 
-http://127.0.0.1:8000/docs#/default/scrape_cases_scrape_post
+API Endpoints
+/scrape: gives combined result
+/stream-scrape: Similar POST input, but streams after every process
 
-Instructions:
-Add court selection with an All Courts option
-Let users select years from 2021 to 2025 only
-Show PDFs on screen and also let users download them
+1.Install requirements.txt 
+2.cmd: playwright install
+
+uvicorn app:app --host 127.0.0.1 --port 8000 --workers 1  
+#set workers only 1 it will take multiple api calls
 
 Endpoints are:
 
