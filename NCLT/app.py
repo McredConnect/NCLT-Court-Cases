@@ -16,6 +16,7 @@ import aiohttp
 import aiofiles
 import os
 from urllib.parse import unquote, urlparse
+from fastapi.middleware.cors import CORSMiddleware
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -117,6 +118,17 @@ class AdaptiveController:
 
 app = FastAPI(title="NCLT Court Cases Scraper 7 with Playwright Async")
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:4200",    # Angular dev server
+        "http://192.168.1.77:4444"  # Production server
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Base search URL and parameter maps
 base_search_url = "https://nclt.gov.in/party-name-wise-search"
@@ -438,3 +450,66 @@ async def scrape_cases_impl(req: ScrapeRequest):
 @app.post("/scrape")
 async def scrape_cases(req: ScrapeRequest):
     return await scrape_cases_impl(req)
+
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
+import urllib.parse
+
+@app.get("/download")
+async def download_file(file_path: str):
+    """Serve files from the local filesystem for download."""
+    try:
+        # Decode the path
+        decoded_path = urllib.parse.unquote(file_path)
+        full_path = decoded_path
+        
+        logging.info(f"Download request - Original: {file_path}")
+        logging.info(f"Download request - Decoded: {decoded_path}")
+        logging.info(f"Download request - Full path: {full_path}")
+        
+        # Security check
+        output_root_real = os.path.realpath(output_root)
+        full_path_real = os.path.realpath(full_path)
+        
+        if not full_path_real.startswith(output_root_real):
+            logging.error(f"Security violation: {full_path_real} not in {output_root_real}")
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Check if file exists
+        if not os.path.exists(full_path):
+            # Try to find the file with different encodings
+            alternative_paths = [
+                decoded_path,
+                decoded_path.replace('%20', ' '),
+                urllib.parse.unquote(decoded_path.replace('%20', ' ')),
+            ]
+            
+            for alt_path in alternative_paths:
+                alt_full_path = os.path.join(output_root, alt_path)
+                if os.path.exists(alt_full_path):
+                    full_path = alt_full_path
+                    logging.info(f"Found file at alternative path: {full_path}")
+                    break
+            else:
+                # File still not found, let's see what's in the directory
+                directory = os.path.dirname(full_path)
+                if os.path.exists(directory):
+                    files_in_dir = os.listdir(directory)
+                    logging.error(f"File not found. Files in directory {directory}: {files_in_dir}")
+                else:
+                    logging.error(f"Directory does not exist: {directory}")
+                
+                raise HTTPException(status_code=404, detail=f"File not found: {os.path.basename(full_path)}")
+        
+        # Return the file
+        return FileResponse(
+            full_path, 
+            media_type='application/pdf',
+            filename=os.path.basename(full_path)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Download error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download file")
