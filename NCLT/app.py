@@ -298,7 +298,7 @@ async def scrape_single_case_optimized(case_link, company_name, bench_name, year
         await page.close()
 
         return {
-            "company_name": company_name,
+            "company": company_name,
             "bench": bench_name,
             "year": year,
             "status": status_name,
@@ -308,7 +308,7 @@ async def scrape_single_case_optimized(case_link, company_name, bench_name, year
     except Exception as e:
         logging.error(f"Error in scrape_single_case_optimized {full_link}: {e}")
         return {
-            "company_name": company_name,
+            "company": company_name,
             "bench": bench_name,
             "year": year,
             "status": status_name,
@@ -391,7 +391,7 @@ async def scrape_cases_stream_optimized(req: ScrapeRequest):
         async with semaphore:
             results = await scrape_one_search_optimized(url, req.company_name, bench_name, year, status_name)
         await result_queue.put({
-            "company_name": req.company_name,
+            "company": req.company_name,
             "bench": bench_name,
             "year": year,
             "status": status_name,
@@ -457,7 +457,7 @@ async def scrape_cases_impl_optimized(req: ScrapeRequest):
         # Add company_name into each result to include it in output
         scraped_data.extend([
             {
-                "company_name": req.company_name,
+                "company": req.company_name,
                 **item
             }
             for item in sublist
